@@ -1,12 +1,40 @@
 /*
-capturar los polygonos creados en la base de datos y mostrarlos en un select, en donde al ascoger uno,me despliegue opciones o 
+[X]capturar los polygonos creados en la base de datos y mostrarlos en un select, en donde al ascoger uno,me despliegue opciones o 
 tome botones pre-definidos (modificar, guardar, eliminar), al modificarlo, saber cuando esta modificando uno antes de empezar a modificar otro,
-luego de eso actualizarlo en la bd
+[X]luego de eso actualizarlo en la bd
 
 
 
-guardar en zonas,zona general y subgeneral, luego editar,y mover los poligonos, y asignar el subgeneral a una persona
+[]guardar en zonas,zona general y subgeneral, luego editar,y mover los poligonos, y asignar el subgeneral a una persona
 
+[]asignar un poligono a un usuario, y a su vez a un administrador, para luego en el mapa mostrar muchos poligonos (hacer bosquejo)
+
+[]dependiendo de los datos, eje 20%se cambie el color a rojo o naranjo (colores material?)
+
+[X]luego al pasar el mouse por ensima del poligono mostrar el nombre
+
+[X]Al guardar el poligonose debe borrar el nombre del input, y ojala borrar del mapa, antes de esto se debe poder modificar (un solo objeto) 
+
+X[]al cargar un poligono, al apretar editar poligono debe mostrar las opciones modificar, mover, y eliminar, y si lo muevo automaticamente debe detectar si lo modifique para cuando seleccione otro me avise si quiero guardar los datos anteriores
+
+X[]al actualizar poligono, se actualiza mas de una vez, eso esta mal ademas de no guardarlo, al guardar se esconden lo botones, pero no se quita el editable=true del poligono
+
+[X]al limpiar el mapa, no se esconde el guardar poligono (div)
+
+[]al tener el poligono dibujdo (negro) y cargar un poligono (rojo) al entrar a editarlo no se puede
+
+[]al guardar un poligono, pueden existir muchos con el mismo nombre,
+
+[X]al recargar la pagina, hay que apretar el boton para cargar los poligonos, lo ideal es que se carguen automaticamente al recargar la pagina, aun asi se puede volver a cargar al apretar el boton
+
+
+[X] al limpiar mapa, y luego al editar un poligono, al momento de guardarlo se ejecuta muchas veces, (limpiar variables y objetos)
+
+[] cuando cargo un poligono que no esta en el centro del mapa, este no se ve y hay que buscarlo.
+
+[X] al eliminar poligono, se debe actualizar la pagina o al menos cargar los poligonos en el select
+
+[X] al guardar un poligono se debe actualizar el mapa
 
 */
 var map;
@@ -19,6 +47,8 @@ var idPolygonEdit;
 var polygonEditInsertAt = false;
 var polygonEditSetAt = false;
 var poligonoCoordenadas = [];
+var numVerticesPoligonEdit;
+var nombrePolygonEdit;
 
 
 function initialize() {
@@ -89,29 +119,7 @@ function initialize() {
 
     $("#cargarPoligonos").click(function(){
         //alert("cargarPoligono");
-
-        var xmlhttp = new XMLHttpRequest();
-        var url = "cargarPoligonos.php";
-
-        xmlhttp.onreadystatechange=function() {
-            if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
-                myFunction(xmlhttp.responseText);
-            }
-        }
-        xmlhttp.open("GET", url, true);
-        xmlhttp.send();
-
-        function myFunction(response) {
-            var arr = JSON.parse(response);
-            var i;
-            var out = "";
-
-            for(i = 0; i < arr.length; i++) {
-                out += "<option value='"+arr[i].id  +"'"+">"+arr[i].nombre+"</option>";
-                //lista
-            }
-            document.getElementById("listaPoligonos").innerHTML = out;
-        }
+        cargarPoligonos();
     });
 
 
@@ -120,11 +128,54 @@ function initialize() {
     google.maps.event.addListener(polygonEdit, 'click', function() {
         alert("click sobre el elemento");
     });
+    
+    var infowindowLevel = 0
+    var infowindow = new google.maps.InfoWindow(
+    { 
+        content: nombrePolygonEdit
+    });
+    google.maps.event.addListener(polygonEdit, 'mouseover', function() {
+        //console.log("mouseover sobre el elemento");
+
+        //infowindow.setZIndex(++infowindowLevel);
+        //console.log(nombrePolygonEdit);
+        /*
+        polygonEdit.setOptions({
+            strokeColor: "#D32F2F",
+            strokeOpacity: 0.80,
+            strokeWeight: 2,
+            fillColor: "#D32F2F",
+            fillOpacity: 0.80
+        });
+        */
+        //infowindow.open(map,polygonEdit);
+    });
+    google.maps.event.addListener(polygonEdit, 'mouseout', function() {
+        //console.log("mouseout sobre el elemento");
+        /*
+        polygonEdit.setOptions({
+            paths: poligonoCoordenadas,
+            editable: false,
+            draggable: false,
+            strokeColor: "#FF0000",
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillColor: "#FF0000",
+            fillOpacity: 0.35
+        });
+        */
+        //infowindow.setZIndex(++infowindowLevel);
+        //infowindow.close();
+    });
 
 
     //boton editar polygon cargado
     $("#editarPoligono").click(function(){
         polygonEdit.setEditable(true);
+        $("#actualizarPoligono").show();
+        $("#eliminarPoligono").show();
+        $("#cancelarEdicion").show();
+        $("#editarPoligono").hide();
     });
 
 
@@ -137,75 +188,105 @@ function initialize() {
     });
 
     //boton editar polygon cargado
-    $("#guardarPoligono").click(function(){
-        alert("guardar Poligono editado");
+    //ACTUALIZAR POLIGONO EDITADO
+    $("#actualizarPoligono").click(function(){
+        //alert("guardar Poligono editado");                
+        $("#actualizarPoligono").hide();
+        $("#eliminarPoligono").hide();
+        $("#cancelarEdicion").hide();
+        $("#editarPoligono").show();
+        
+        polygonEditInsertAt = false;
+        polygonEditSetAt = false;
+        
+        actualizarPoligono();
+
+        
     });
 
     //boton editar polygon cargado
     $("#eliminarPoligono").click(function(){
-        alert("eliminar poligono editado");
+        eliminarPoligono();
+        $("#actualizarPoligono").hide();
+        $("#eliminarPoligono").hide();
+        $("#cancelarEdicion").hide();
+        $("#editarPoligono").show();
+        cleanMapa();
+        
+        
     });
 
-
-    /*
-    $("#listaPoligonos").onchange(function(){
-        if( polygonEditInsertAt == true || polygonEditSetAt == true){
-            console.log("entra al if");
-            $("#dialogoCerrar").dialog({
-                width: 590,
-                height: 350,
-                show: "blind",
-                hide: "shake",
-                resizable: "false",
-                position: "center"		
-            });
-        } 
-        else{
-            console.log("entra al if");
-            $("#dialogoCerrar").dialog({
-                width: 590,
-                height: 350,
-                show: "blind",
-                hide: "shake",
-                resizable: "false",
-                position: "center"		
-            });
-        }
-    });
-    */
-
-
-
-
-
-
-
-
+    cargarPoligonos();
 }//inicialize
 
 function cleanMapa(){
+    $("#divGuardar").hide();
+    
+    
+    map;
+    nombrePoligono;
+    numVertices;
+    coordenadas;
+    polygonEdit = new google.maps.Polygon({});
+    polygonEditInsertAt = false;
+    polygonEditSetAt = false;
+
+    
+    nombrePolygonEdit = null;
+    idPolygonEdit = null;
+    poligonoCoordenadas = null;
+    numVerticesPoligonEdit = null;
+    
+    
     initialize();
 }
 
 
+function cargarPoligonos(){
+    var xmlhttp = new XMLHttpRequest();
+    var url = "cargarPoligonos.php";
 
+    xmlhttp.onreadystatechange=function() {
+        if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+            myFunction(xmlhttp.responseText);
+        }
+    }
+    xmlhttp.open("GET", url, true);
+    xmlhttp.send();
+
+    function myFunction(response) {
+        var arr = JSON.parse(response);
+        var i;
+        var out = "";
+
+        for(i = 0; i < arr.length; i++) {
+            out += "<option value='"+arr[i].id  +"'"+">"+arr[i].nombre+"</option>";
+            //lista
+        }
+        document.getElementById("listaPoligonos").innerHTML = out;
+    }
+}
+
+
+//cuando selecciono un poligono
 function clickPoligono(id){
     if(polygonEditInsertAt == true || polygonEditSetAt == true){
-        if(confirm('¿Seguro que desea perder los datos?'))this.form.submit();
-    }else{
-        polygonEditInsertAt = false;
-        polygonEditSetAt = false;
+        
+        if(confirm('¿Seguro que desea perder los datos?')){
+            //this.form.submit();
+            polygonEditInsertAt = false;
+            polygonEditSetAt = false;
+        }
+        else{
+            return false;
+        }
     }
-
-
-
-
 
     poligonoCoordenadas = [];
     polygonEdit.setMap(null);
 
 
-    $("#guardarPoligono").hide();
+    $("#actualizarPoligono").hide();
     $("#eliminarPoligono").hide();
     $("#cancelarEdicion").hide();
     $("#editarPoligono").show();
@@ -230,7 +311,12 @@ function clickPoligono(id){
         var nombre      = arr[0].nombre;
         var coordenadas = arr[0].poligono;
         var vertices    = arr[0].vertices;
-
+        
+        nombrePolygonEdit = arr[0].nombre;
+        
+        if(!coordenadas){
+            return false;
+        }
         var geom = coordenadas.replace("POLYGON","");
         //console.log(geom);
         geom = geom.replace("((","");
@@ -267,15 +353,17 @@ function clickPoligono(id){
         //insert_at es para cuando ingreso un punto entre las coordenadas (ingreso un vertice)
         google.maps.event.addListener(polygonEdit.getPath(), 'insert_at', function() {
             console.log('insert_at');
-            var coordinates = (polygonEdit.getPath().getArray());//coordenadas
+            poligonoCoordenadas = (polygonEdit.getPath().getArray());//coordenadas
+            console.log(poligonoCoordenadas);
+
             var vertices = (polygonEdit.getPath());//objeto
-            var numVertices = (vertices.getLength());
-            console.log("coordenadas: "+coordinates);
-            console.log("vertices: "+vertices);
-            console.log("numero de vertices: "+numVertices);
+            numVerticesPoligonEdit = (vertices.getLength());
+            //console.log("coordenadas: "+coordinates);
+            //console.log("vertices: "+vertices);
+            //console.log("numero de vertices: "+numVerticesPoligonEdit);
 
             polygonEditInsertAt = true;
-            $("#guardarPoligono").show();
+            $("#actualizarPoligono").show();
             $("#eliminarPoligono").show();
             $("#cancelarEdicion").show();
 
@@ -288,15 +376,16 @@ function clickPoligono(id){
         //set_at es para cuando modfico un vertice que ya estaba como referencia.
         google.maps.event.addListener(polygonEdit.getPath(), 'set_at', function() {
             console.log('set_at');
-            var coordinates = (polygonEdit.getPath().getArray());//coordenadas
+            poligonoCoordenadas = (polygonEdit.getPath().getArray());//coordenadas
+            console.log(poligonoCoordenadas);
             var vertices = (polygonEdit.getPath());//objeto
-            var numVertices = vertices.getLength();
-            console.log("coordenadas: "+coordinates);
-            console.log("vertices: "+vertices);
-            console.log("numero de vertices: "+numVertices);
+            numVerticesPoligonEdit = vertices.getLength();
+            //console.log("coordenadas: "+coordinates);
+            //console.log("vertices: "+vertices);
+            //console.log("numero de vertices: "+numVerticesPoligonEdit);
 
             polygonEditSetAt = true;
-            $("#guardarPoligono").show();
+            $("#actualizarPoligono").show();
             $("#eliminarPoligono").show();
             $("#cancelarEdicion").show();
 
@@ -337,13 +426,74 @@ function guardarPoligono(){
             alert("poligono guardado");
         }
     }
-    //console.log("guardarPoligono.php?nombrePoligono="+nombre+"coordenadas="+coordenadas);
+    //console.log("guardarPoligono.php?nombrePoligono="+nombrePoligono+"&coordenadas="+poligonoCoordenadas+"&vertices="+numVertices);
+    
     conexion.open("GET","guardarPoligono.php?nombrePoligono="+nombrePoligono+"&coordenadas="+coordenadas+"&vertices="+numVertices,true);
     conexion.send();
 
     nombrePoligono = null;
     coordenadas = null;
     numVertices=null;
+    cleanMapa();
 }//guardarPoligono
 
+
+//actualizar poligono editado
+function actualizarPoligono(){
+    
+    console.log("id: "+idPolygonEdit+" coordenadas: "+poligonoCoordenadas+" vertices: "+numVerticesPoligonEdit);
+    //console.log(poligonoCoordenadas.length);
+    var poligonoCoordenadas2=[];
+    for(var i=0; i<poligonoCoordenadas.length; i++){
+       //console.log(poligonoCoordenadas[i].toString().replace(",",""));
+        poligonoCoordenadas2.push(poligonoCoordenadas[i].toString().replace(",","").replace("(","").replace(")","")); 
+    }  
+    var conexion;
+    if (window.XMLHttpRequest){
+        conexion = new XMLHttpRequest();
+    }
+    else{
+        conexion = new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    conexion.onreadystatechange=function(){
+        if (conexion.readyState==4 && conexion.status==200){
+            //document.getElementById("midiv").innerHTML=conexion.responseText; 
+            alert("poligono actualizado");
+        }
+    }
+
+    
+    var strpaso=poligonoCoordenadas2.toString();
+    
+    //console.log("actualizarPoligono.php?idPoligono="+idPolygonEdit+"&nuevasCoordenadas="+strpaso+"&vertices="+numVerticesPoligonEdit);
+    conexion.open("GET","actualizarPoligono.php?idPoligono="+idPolygonEdit+"&nuevasCoordenadas="+strpaso+"&vertices="+numVerticesPoligonEdit,true);
+    conexion.send();
+    
+    idPolygonEdit = null;
+    poligonoCoordenadas = null;
+    numVerticesPoligonEdit = null;
+    
+    cleanMapa();
+    
+}
+
+
+//eliminar poligono editado
+function eliminarPoligono(){
+    var conexion;
+    if (window.XMLHttpRequest){
+        conexion = new XMLHttpRequest();
+    }
+    else{
+        conexion = new ActiveXObject("Microsoft.XMLHTTP");
+    }
+    conexion.onreadystatechange=function(){
+        if (conexion.readyState==4 && conexion.status==200){
+            //document.getElementById("midiv").innerHTML=conexion.responseText; 
+            alert("poligono eliminado");
+        }
+    } 
+    conexion.open("GET","eliminarPoligono.php?idPoligono="+idPolygonEdit,true);
+    conexion.send();
+}
 

@@ -14,6 +14,8 @@ require_once __DIR__ . '/require/connectbd.php';
 // connecting to db
 $db = new DB_CONNECT();
 
+echo "INSERT INTO poligono (nombre, geom, vertices) VALUES ('$nombre' ,GeomFromText('POLYGON(($coordenadas))'),'$vertices')";
+
 //get all products from products table
 $result = mysql_query("INSERT INTO poligono (nombre, geom, vertices) VALUES ('$nombre' ,GeomFromText('POLYGON(($coordenadas))'),'$vertices')") or die(mysql_error());
 
